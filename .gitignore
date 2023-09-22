@@ -1,0 +1,7 @@
+.vscode
+ExpenseTracker.exe
+Source/Main.cpp
+ExpenceTracker.exe
+Expenses.db
+sqlite3.dll
+my_build.bat
