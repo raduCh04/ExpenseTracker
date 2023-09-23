@@ -1,7 +1,7 @@
 #include "ExpenseTracker.h"
 
 ExpenseTracker::ExpenseTracker() 
-    : m_Total(0.0f), m_IsRunning(true), m_Database(nullptr) {
+    : m_Total(0.0f), m_Database(nullptr) {
         int exit = sqlite3_open("Expenses.db", &m_Database);
         if (exit != SQLITE_OK) {
             std::cerr << "Error open DB " << sqlite3_errmsg(m_Database) << '\n';
@@ -54,11 +54,11 @@ ExpenseTracker::ExpenseTracker()
 }
 
 ExpenseTracker::ExpenseTracker(const ExpenseTracker &other)
-    : m_Total(other.m_Total), m_IsRunning(other.m_IsRunning), m_Database(other.m_Database) {
+    : m_Total(other.m_Total), m_Database(other.m_Database) {
 }
 
 ExpenseTracker::ExpenseTracker(ExpenseTracker &&other)
-    : m_Total(other.m_Total),m_IsRunning(other.m_IsRunning), m_Database(std::move(other.m_Database)) {
+    : m_Total(other.m_Total), m_Database(std::move(other.m_Database)) {
         other.m_Total = 0.0f;
         other.m_Database = nullptr;
 }
@@ -238,14 +238,24 @@ void ExpenseTracker::LoadTotalFromDatabase() {
     sqlite3_finalize(selectStatement);
 }
 
+// void ExpenseTracker::Run() {
+//     while (IsRunning()) {
+//         DisplayInterface();
+//         uint16_t input;
+//         if (!(std::cin >> input)) {
+//             continue;
+//         }
+//         HandleCommands(input);
+//     }
+// }
+
 void ExpenseTracker::Run() {
     while (IsRunning()) {
-        DisplayInterface();
-        uint16_t input;
-        if (!(std::cin >> input)) {
-            continue;
+        MSG msg = {};
+        while (PeekMessageA(&msg, m_WindowHandle, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessageA(&msg);
         }
-        HandleCommands(input);
     }
 }
 

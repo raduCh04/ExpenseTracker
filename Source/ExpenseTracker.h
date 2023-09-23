@@ -5,18 +5,16 @@
 #include <string>
 
 #include "sqlite3.h"
+#include "Application.h"
 
-class ExpenseTracker {
+class ExpenseTracker : public Application {
     public:
         ExpenseTracker();
         ExpenseTracker(const ExpenseTracker& other);
         ExpenseTracker(ExpenseTracker&& other);
         ~ExpenseTracker();
-
-        void Run();
-
-        inline void Stop() { m_IsRunning = false; }
-        inline bool IsRunning() const { return m_IsRunning; }
+        
+        virtual void Run() override;
 
         friend std::ostream& operator<<(std::ostream& os, const ExpenseTracker &tracker);
     private:
@@ -31,6 +29,5 @@ class ExpenseTracker {
         void LoadTotalFromDatabase();
     private:
         float m_Total;
-        bool m_IsRunning;
         sqlite3* m_Database;
 };
