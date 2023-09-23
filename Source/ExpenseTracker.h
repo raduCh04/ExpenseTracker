@@ -13,6 +13,15 @@ class ExpenseTracker {
         ExpenseTracker(ExpenseTracker&& other);
         ~ExpenseTracker();
 
+        void Run();
+
+        inline void Stop() { m_IsRunning = false; }
+        inline bool IsRunning() const { return m_IsRunning; }
+
+        friend std::ostream& operator<<(std::ostream& os, const ExpenseTracker &tracker);
+    private:
+        void DisplayInterface();
+        void HandleCommands(uint16_t command_index);
         void AddEntry(const std::string& name, float value);
         void RemoveEntry(const std::string& name);
         void ChangeEntryName(const std::string& name, const std::string& new_name);
@@ -20,15 +29,6 @@ class ExpenseTracker {
 
         void SaveTotalToDatabase();
         void LoadTotalFromDatabase();
-
-        void Run();
-        void DisplayInterface();
-        void HandleCommands(uint16_t command_index);
-
-        inline void Stop() { m_IsRunning = false; }
-        inline bool IsRunning() const { return m_IsRunning; }
-
-        friend std::ostream& operator<<(std::ostream& os, const ExpenseTracker &tracker);
     private:
         float m_Total;
         bool m_IsRunning;

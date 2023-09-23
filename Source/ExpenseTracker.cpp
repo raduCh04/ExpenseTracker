@@ -98,12 +98,16 @@ void ExpenseTracker::RemoveEntry(const std::string &name) {
         std::cerr << "Error preparing select statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
+    sqlite3_bind_text(selectStatement, 1, name.c_str(), -1, SQLITE_STATIC);
 
     float removedValue = 0.0f;
 
     if (sqlite3_step(selectStatement) == SQLITE_ROW) {
         removedValue = static_cast<float>(sqlite3_column_double(selectStatement, 0));
+        std::cout << "Happened!\n"; 
     }
+
+    std::cout << "Removed value" << removedValue << '\n';
 
     sqlite3_finalize(selectStatement);
     std::string deleteQuery = "DELETE FROM Expenses WHERE Name = ?";
@@ -158,6 +162,8 @@ void ExpenseTracker::ChangeEntryValue(const std::string &name, float new_value) 
         return;
     }
 
+    sqlite3_bind_text(selectStatement, 1, name.c_str(), -1, SQLITE_STATIC);
+
     float oldValue = 0.0f;
 
     if (sqlite3_step(selectStatement) == SQLITE_ROW) {
@@ -182,7 +188,7 @@ void ExpenseTracker::ChangeEntryValue(const std::string &name, float new_value) 
     }
     sqlite3_finalize(statement);
 
-    m_Total -= oldValue + new_value;
+    m_Total -= oldValue - new_value;
 
     SaveTotalToDatabase();
 }

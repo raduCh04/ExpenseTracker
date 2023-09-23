@@ -5,6 +5,7 @@ A mini expense tracker in C++
 ## Dependencies
 
 Just the GCC/G++ compiler and you are good to go!
+At the moment only on Windows
 
 
 ## Usage
