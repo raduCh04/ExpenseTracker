@@ -1,25 +1,27 @@
 #pragma once
 
-#include <Windows.h>
+
+#include <string>
+#include <vector>
 #include <iostream>
+
+#include "GLFW/glfw3.h"
 
 class Application {
 	public:
 		Application();
+		~Application();
 
 		virtual void Run() = 0;
 
 		inline int GetWidth() const { return m_Width; }
 		inline int GetHeight() const { return m_Height; }
+		inline GLFWwindow *GetWindow() const { return m_Window; }
 
 		inline void Stop() { m_IsRunning = false; }
-        inline bool IsRunning() const { return m_IsRunning; }
+        inline bool IsRunning() const { return m_IsRunning == glfwWindowShouldClose(m_Window); }
 	private:
-		static LRESULT WndProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
-	protected:
-		WNDCLASSA m_WindowClass;
-		HWND m_WindowHandle;
-	private:
+		GLFWwindow *m_Window;
 		int m_Width, m_Height;
 		bool m_IsRunning;
 };

@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-#include "sqlite3.h"
+#include "SQLite3/sqlite3.h"
 #include "Application.h"
 
 class ExpenseTracker : public Application {
@@ -30,4 +30,5 @@ class ExpenseTracker : public Application {
     private:
         float m_Total;
         sqlite3* m_Database;
+        std::vector<std::string> m_TableStrings;
 };

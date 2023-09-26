@@ -1,7 +1,11 @@
 #include "ExpenseTracker.h"
 
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_glfw.h"
+#include "ImGui/imgui_impl_opengl3.h"
+
 ExpenseTracker::ExpenseTracker() 
-    : m_Total(0.0f), m_Database(nullptr) {
+    : m_Total(0.0f), m_Database(nullptr), m_TableStrings({"Id", "Name", "Value"}) {
         int exit = sqlite3_open("Expenses.db", &m_Database);
         if (exit != SQLITE_OK) {
             std::cerr << "Error open DB " << sqlite3_errmsg(m_Database) << '\n';
@@ -54,13 +58,14 @@ ExpenseTracker::ExpenseTracker()
 }
 
 ExpenseTracker::ExpenseTracker(const ExpenseTracker &other)
-    : m_Total(other.m_Total), m_Database(other.m_Database) {
+    : m_Total(other.m_Total), m_Database(other.m_Database), m_TableStrings(other.m_TableStrings) {
 }
 
 ExpenseTracker::ExpenseTracker(ExpenseTracker &&other)
-    : m_Total(other.m_Total), m_Database(std::move(other.m_Database)) {
+    : m_Total(other.m_Total), m_Database(std::move(other.m_Database)), m_TableStrings(std::move(other.m_TableStrings)) {
         other.m_Total = 0.0f;
         other.m_Database = nullptr;
+        other.m_TableStrings = {};
 }
 
 ExpenseTracker::~ExpenseTracker() {
@@ -238,26 +243,61 @@ void ExpenseTracker::LoadTotalFromDatabase() {
     sqlite3_finalize(selectStatement);
 }
 
-// void ExpenseTracker::Run() {
-//     while (IsRunning()) {
-//         DisplayInterface();
-//         uint16_t input;
-//         if (!(std::cin >> input)) {
-//             continue;
-//         }
-//         HandleCommands(input);
-//     }
-// }
-
 void ExpenseTracker::Run() {
     while (IsRunning()) {
-        MSG msg = {};
-        while (PeekMessageA(&msg, m_WindowHandle, 0, 0, PM_REMOVE)) {
-            TranslateMessage(&msg);
-            DispatchMessageA(&msg);
+        glfwPollEvents();
+
+        // Start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (ImGui::BeginTable("table1", 3))
+        {
+            // Add headers for the table columns
+            for (const std::string& header : m_TableStrings)
+            {
+                ImGui::TableNextColumn();
+                ImGui::Text(header.c_str());
+            }
+            // Query the database to fetch the table data
+            std::string selectQuery = "SELECT * FROM Expenses";
+            sqlite3_stmt* statement;
+            int result = sqlite3_prepare_v2(m_Database, selectQuery.c_str(), -1, &statement, nullptr);
+            if (result != SQLITE_OK) {
+                std::cerr << "Error preparing select statement: " << sqlite3_errmsg(m_Database) << '\n';
+                continue; // Skip table rendering if there's an error
+            }
+            while (sqlite3_step(statement) == SQLITE_ROW) {
+                for (int column = 0; column < m_TableStrings.size(); column++) {
+                    ImGui::TableNextColumn();
+                    // Display the data from the current row
+                    if (column == 0) {
+                        int id = sqlite3_column_int(statement, column);
+                        ImGui::Text("%d", id);
+                    } else if (column == 1) {
+                        const char* name = (const char*)sqlite3_column_text(statement, column);
+                        ImGui::Text(name);
+                    } else if (column == 2) {
+                        double value = sqlite3_column_double(statement, column);
+                        ImGui::Text("%.2f", value);
+                    }
+                }
+            }
+            // Clean up the SQLite statement
+            sqlite3_finalize(statement);
+            ImGui::EndTable();
         }
+
+        // Rendering
+        ImGui::Render();
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(GetWindow());
     }
 }
+
 
 void ExpenseTracker::DisplayInterface()
 {
