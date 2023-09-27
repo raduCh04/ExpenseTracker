@@ -1,93 +1,110 @@
 #include "ExpenseTracker.h"
+#include "ExpenseTrackerRenderer.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_glfw.h"
 #include "ImGui/imgui_impl_opengl3.h"
 
-ExpenseTracker::ExpenseTracker() 
-    : m_Total(0.0f), m_Database(nullptr), m_TableStrings({"Id", "Name", "Value"}) {
-        int exit = sqlite3_open("Expenses.db", &m_Database);
-        if (exit != SQLITE_OK) {
-            std::cerr << "Error open DB " << sqlite3_errmsg(m_Database) << '\n';
-        } else {
-            std::cout << "Opened Database Successfully!" << std::endl;
-        }
+static bool initialized = false;
 
-        std::string table_create = "CREATE TABLE IF NOT EXISTS Expenses("
-                                    "Id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                                    "Name TEXT,"
-                                    "Value REAL)";
-        char *message_error;
-        exit = sqlite3_exec(m_Database, table_create.c_str(), nullptr, 0, &message_error);
-
-        if (exit != SQLITE_OK) {
-            std::cerr << "Error create table" << message_error << '\n';
-            sqlite3_free(message_error);
-        } else {
-            std::cout << "Table created succesfully!" << '\n';
-        }
-
-        std::string totalTableCreate = "CREATE TABLE IF NOT EXISTS Total (Value REAL)";
-        char *totalMessageError;
-        exit = sqlite3_exec(m_Database, totalTableCreate.c_str(), nullptr, 0, &totalMessageError);
-        if (exit != SQLITE_OK) {
-            std::cerr << "Error creating total table: " << totalMessageError << '\n';
-            sqlite3_free(totalMessageError);
-        } else {
-            std::cout << "Total table created successfully!" << '\n';
-        }
-
-        LoadTotalFromDatabase();
-
-        std::string insert_value = "INSERT INTO Total (Value) VALUES (?)";
-        sqlite3_stmt *statement;
-        int result = sqlite3_prepare_v2(m_Database, insert_value.c_str(), -1, &statement, nullptr);
-        if (result != SQLITE_OK) {
-            std::cerr << "Error preparing statement: " << sqlite3_errmsg(m_Database) << '\n';
-        }
-        sqlite3_bind_double(statement, 1, m_Total);
-
-        result = sqlite3_step(statement);
-        if (result != SQLITE_DONE) {
-        std::cerr << "Error inserting total: " << sqlite3_errmsg(m_Database) << '\n';
-        } else {
-            std::cout << "Total Added\n";
-        }
-        sqlite3_finalize(statement);
-
+ExpenseTracker::ExpenseTracker()
+    : m_Total(0.0f), m_Database(nullptr), m_TableStrings({"Id", "Name", "Value"})
+{
+    InitDatabase();
 }
 
-ExpenseTracker::ExpenseTracker(const ExpenseTracker &other)
-    : m_Total(other.m_Total), m_Database(other.m_Database), m_TableStrings(other.m_TableStrings) {
-}
-
-ExpenseTracker::ExpenseTracker(ExpenseTracker &&other)
-    : m_Total(other.m_Total), m_Database(std::move(other.m_Database)), m_TableStrings(std::move(other.m_TableStrings)) {
-        other.m_Total = 0.0f;
-        other.m_Database = nullptr;
-        other.m_TableStrings = {};
-}
-
-ExpenseTracker::~ExpenseTracker() {
+ExpenseTracker::~ExpenseTracker()
+{
     sqlite3_close(m_Database);
 }
 
-void ExpenseTracker::AddEntry(const std::string &name, float value) {
+void ExpenseTracker::InitDatabase()
+{
+    // Establish Connection
+    i32 exit = sqlite3_open("Expenses.db", &m_Database);
+    if (exit != SQLITE_OK)
+    {
+        std::cerr << "Error open DB " << sqlite3_errmsg(m_Database) << '\n';
+    }
+    else
+    {
+        std::cout << "Opened Database Successfully!" << std::endl;
+    }
+
+    // Create Expenses table
+    std::string table_create = "CREATE TABLE IF NOT EXISTS Expenses("
+                               "Id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                               "Name TEXT,"
+                               "Value REAL)";
+    char *message_error = nullptr;
+    exit = sqlite3_exec(m_Database, table_create.c_str(), nullptr, 0, &message_error);
+    if (exit != SQLITE_OK)
+    {
+        std::cerr << "Error create table" << message_error << '\n';
+        sqlite3_free(message_error);
+    }
+    else
+    {
+        std::cout << "Table created succesfully!" << '\n';
+    }
+
+    // Create Total Value Table
+    std::string totalTableCreate = "CREATE TABLE IF NOT EXISTS Total (Value REAL)";
+    char *totalMessageError = nullptr;
+    exit = sqlite3_exec(m_Database, totalTableCreate.c_str(), nullptr, 0, &totalMessageError);
+    if (exit != SQLITE_OK)
+    {
+        std::cerr << "Error creating total table: " << totalMessageError << '\n';
+        sqlite3_free(totalMessageError);
+    }
+    else
+    {
+        std::cout << "Total table created successfully!" << '\n';
+    }
+
+    // Setup Total Value Table
+    LoadTotalFromDatabase();
+    std::string insert_value = "INSERT INTO Total (Value) VALUES (?)";
+    sqlite3_stmt *statement = nullptr;
+    i32 result = sqlite3_prepare_v2(m_Database, insert_value.c_str(), -1, &statement, nullptr);
+    if (result != SQLITE_OK)
+    {
+        std::cerr << "Error preparing statement: " << sqlite3_errmsg(m_Database) << '\n';
+    }
+    sqlite3_bind_double(statement, 1, m_Total);
+    result = sqlite3_step(statement);
+    if (result != SQLITE_DONE)
+    {
+        std::cerr << "Error inserting total: " << sqlite3_errmsg(m_Database) << '\n';
+    }
+    else
+    {
+        std::cout << "Total Added\n";
+    }
+    sqlite3_finalize(statement);
+}
+
+void ExpenseTracker::AddEntry(const std::string &name, f32 value)
+{
     m_Total += value;
     std::string insert = "INSERT INTO Expenses (Name, Value) VALUES (?, ?)";
-    sqlite3_stmt *statement;
-    int result = sqlite3_prepare_v2(m_Database, insert.c_str(), -1, &statement, nullptr);
-    if (result != SQLITE_OK) {
+    sqlite3_stmt *statement = nullptr;
+    i32 result = sqlite3_prepare_v2(m_Database, insert.c_str(), -1, &statement, nullptr);
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
     sqlite3_bind_text(statement, 1, name.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_double(statement, 2, static_cast<float>(value));
+    sqlite3_bind_double(statement, 2, static_cast<f32>(value));
 
     result = sqlite3_step(statement);
-    if (result != SQLITE_DONE) {
+    if (result != SQLITE_DONE)
+    {
         std::cerr << "Error inserting expense: " << sqlite3_errmsg(m_Database) << '\n';
-    } else {
+    }
+    else
+    {
         std::cout << "Expense Added\n";
     }
     sqlite3_finalize(statement);
@@ -95,100 +112,113 @@ void ExpenseTracker::AddEntry(const std::string &name, float value) {
     SaveTotalToDatabase();
 }
 
-void ExpenseTracker::RemoveEntry(const std::string &name) {
+void ExpenseTracker::RemoveEntry(const std::string &name)
+{
     std::string selectValueQuery = "SELECT Value FROM Expenses WHERE Name = ?";
     sqlite3_stmt *selectStatement;
-    int result = sqlite3_prepare_v2(m_Database, selectValueQuery.c_str(), -1, &selectStatement, nullptr);
-    if (result != SQLITE_OK) {
+    i32 result = sqlite3_prepare_v2(m_Database, selectValueQuery.c_str(), -1, &selectStatement, nullptr);
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing select statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
     sqlite3_bind_text(selectStatement, 1, name.c_str(), -1, SQLITE_STATIC);
 
-    float removedValue = 0.0f;
+    f32 removedValue = 0.0f;
 
-    if (sqlite3_step(selectStatement) == SQLITE_ROW) {
-        removedValue = static_cast<float>(sqlite3_column_double(selectStatement, 0));
-        std::cout << "Happened!\n"; 
+    if (sqlite3_step(selectStatement) == SQLITE_ROW)
+    {
+        removedValue = static_cast<f32>(sqlite3_column_double(selectStatement, 0));
     }
-
-    std::cout << "Removed value" << removedValue << '\n';
 
     sqlite3_finalize(selectStatement);
     std::string deleteQuery = "DELETE FROM Expenses WHERE Name = ?";
     sqlite3_stmt *statement;
     result = sqlite3_prepare_v2(m_Database, deleteQuery.c_str(), -1, &statement, nullptr);
-    if (result != SQLITE_OK) {
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing delete statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
     sqlite3_bind_text(statement, 1, name.c_str(), -1, SQLITE_STATIC);
     result = sqlite3_step(statement);
-    if (result != SQLITE_DONE) {
+    if (result != SQLITE_DONE)
+    {
         std::cerr << "Error deleting expense: " << sqlite3_errmsg(m_Database) << '\n';
-    } else {
+    }
+    else
+    {
         std::cout << "Expense Removed from Database\n";
     }
     sqlite3_finalize(statement);
 
     m_Total -= removedValue;
     SaveTotalToDatabase();
-    
-    std::cout << "Removed expense: " << "\"" << name << "\"" << '\n';
-    return;
 }
 
-void ExpenseTracker::ChangeEntryName(const std::string &name, const std::string &new_name) {
+void ExpenseTracker::ChangeEntryName(const std::string &name, const std::string &new_name)
+{
     std::string updateQuery = "UPDATE Expenses SET Name = ? WHERE Name = ?";
     sqlite3_stmt *statement;
-    int result = sqlite3_prepare_v2(m_Database, updateQuery.c_str(), -1, &statement, nullptr);
-    if (result != SQLITE_OK) {
+    i32 result = sqlite3_prepare_v2(m_Database, updateQuery.c_str(), -1, &statement, nullptr);
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing update statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
     sqlite3_bind_text(statement, 1, new_name.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(statement, 2, name.c_str(), -1, SQLITE_STATIC);
     result = sqlite3_step(statement);
-    if (result != SQLITE_DONE) {
+    if (result != SQLITE_DONE)
+    {
         std::cerr << "Error updating expense name: " << sqlite3_errmsg(m_Database) << '\n';
-    } else {
+    }
+    else
+    {
         std::cout << "Expense Name Updated in Database\n";
     }
     sqlite3_finalize(statement);
     return;
 }
 
-void ExpenseTracker::ChangeEntryValue(const std::string &name, float new_value) {
+void ExpenseTracker::ChangeEntryValue(const std::string &name, f32 new_value)
+{
     std::string selectValueQuery = "SELECT Value FROM Expenses WHERE Name = ?";
     sqlite3_stmt *selectStatement;
-    int result = sqlite3_prepare_v2(m_Database, selectValueQuery.c_str(), -1, &selectStatement, nullptr);
-    if (result != SQLITE_OK) {
+    i32 result = sqlite3_prepare_v2(m_Database, selectValueQuery.c_str(), -1, &selectStatement, nullptr);
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing select statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
 
     sqlite3_bind_text(selectStatement, 1, name.c_str(), -1, SQLITE_STATIC);
 
-    float oldValue = 0.0f;
+    f32 oldValue = 0.0f;
 
-    if (sqlite3_step(selectStatement) == SQLITE_ROW) {
-        oldValue = static_cast<float>(sqlite3_column_double(selectStatement, 0));
+    if (sqlite3_step(selectStatement) == SQLITE_ROW)
+    {
+        oldValue = static_cast<f32>(sqlite3_column_double(selectStatement, 0));
     }
 
     sqlite3_finalize(selectStatement);
     std::string updateQuery = "UPDATE Expenses SET Value = ? WHERE Name = ?";
     sqlite3_stmt *statement;
     result = sqlite3_prepare_v2(m_Database, updateQuery.c_str(), -1, &statement, nullptr);
-    if (result != SQLITE_OK) {
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing update statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
-    sqlite3_bind_double(statement, 1, static_cast<float>(new_value));
+    sqlite3_bind_double(statement, 1, static_cast<f32>(new_value));
     sqlite3_bind_text(statement, 2, name.c_str(), -1, SQLITE_STATIC);
     result = sqlite3_step(statement);
-    if (result != SQLITE_DONE) {
+    if (result != SQLITE_DONE)
+    {
         std::cerr << "Error updating expense value: " << sqlite3_errmsg(m_Database) << '\n';
-    } else {
+    }
+    else
+    {
         std::cout << "Expense Value Updated in Database\n";
     }
     sqlite3_finalize(statement);
@@ -198,208 +228,69 @@ void ExpenseTracker::ChangeEntryValue(const std::string &name, float new_value) 
     SaveTotalToDatabase();
 }
 
-void ExpenseTracker::SaveTotalToDatabase() {
+void ExpenseTracker::SaveTotalToDatabase()
+{
     std::string updateTotalQuery = "UPDATE Total SET Value = ?";
-    sqlite3_stmt *updateStatement;
-    int result = sqlite3_prepare_v2(m_Database, updateTotalQuery.c_str(), -1, &updateStatement, nullptr);
-    if (result != SQLITE_OK) {
+    sqlite3_stmt *updateStatement = nullptr;
+    i32 result = sqlite3_prepare_v2(m_Database, updateTotalQuery.c_str(), -1, &updateStatement, nullptr);
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing update total statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
     sqlite3_bind_double(updateStatement, 1, static_cast<double>(m_Total));
 
     result = sqlite3_step(updateStatement);
-    if (result != SQLITE_DONE) {
+    if (result != SQLITE_DONE)
+    {
         std::cerr << "Error updating total value in the database: " << sqlite3_errmsg(m_Database) << '\n';
-    } else {
+    }
+    else
+    {
         std::cout << "Total Value Updated in the Database\n";
-        
     }
     sqlite3_finalize(updateStatement);
 }
 
-
-void ExpenseTracker::LoadTotalFromDatabase() {
+void ExpenseTracker::LoadTotalFromDatabase()
+{
     std::string selectTotalQuery = "SELECT Value FROM Total";
-    sqlite3_stmt *selectStatement;
-    int result = sqlite3_prepare_v2(m_Database, selectTotalQuery.c_str(), -1, &selectStatement, nullptr);
-    if (result != SQLITE_OK) {
+    sqlite3_stmt *selectStatement = nullptr;
+    i32 result = sqlite3_prepare_v2(m_Database, selectTotalQuery.c_str(), -1, &selectStatement, nullptr);
+    if (result != SQLITE_OK)
+    {
         std::cerr << "Error preparing select total statement: " << sqlite3_errmsg(m_Database) << '\n';
         return;
     }
 
     result = sqlite3_step(selectStatement);
-    if (result == SQLITE_ROW) {
-        m_Total = static_cast<float>(sqlite3_column_double(selectStatement, 0));
+    if (result == SQLITE_ROW)
+    {
+        m_Total = static_cast<f32>(sqlite3_column_double(selectStatement, 0));
         std::cout << "Total Value Loaded from the Database\n";
-    } else if (result == SQLITE_DONE) {
-        // No rows found, initialize total to zero or any default value
+    }
+    else if (result == SQLITE_DONE)
+    {
         m_Total = 0.0f;
         std::cout << "Total Value not found in the database, initialized to zero.\n";
-    } else {
+    }
+    else
+    {
         std::cerr << "Error loading total value from the database: " << sqlite3_errmsg(m_Database) << '\n';
     }
 
     sqlite3_finalize(selectStatement);
 }
 
-void ExpenseTracker::Run() {
-    while (IsRunning()) {
-        glfwPollEvents();
-
-        // Start the Dear ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        if (ImGui::BeginTable("table1", 3))
-        {
-            // Add headers for the table columns
-            for (const std::string& header : m_TableStrings)
-            {
-                ImGui::TableNextColumn();
-                ImGui::Text(header.c_str());
-            }
-            // Query the database to fetch the table data
-            std::string selectQuery = "SELECT * FROM Expenses";
-            sqlite3_stmt* statement;
-            int result = sqlite3_prepare_v2(m_Database, selectQuery.c_str(), -1, &statement, nullptr);
-            if (result != SQLITE_OK) {
-                std::cerr << "Error preparing select statement: " << sqlite3_errmsg(m_Database) << '\n';
-                continue; // Skip table rendering if there's an error
-            }
-            while (sqlite3_step(statement) == SQLITE_ROW) {
-                for (int column = 0; column < m_TableStrings.size(); column++) {
-                    ImGui::TableNextColumn();
-                    // Display the data from the current row
-                    if (column == 0) {
-                        int id = sqlite3_column_int(statement, column);
-                        ImGui::Text("%d", id);
-                    } else if (column == 1) {
-                        const char* name = (const char*)sqlite3_column_text(statement, column);
-                        ImGui::Text(name);
-                    } else if (column == 2) {
-                        double value = sqlite3_column_double(statement, column);
-                        ImGui::Text("%.2f", value);
-                    }
-                }
-            }
-            // Clean up the SQLite statement
-            sqlite3_finalize(statement);
-            ImGui::EndTable();
-        }
-
-        // Rendering
-        ImGui::Render();
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        glfwSwapBuffers(GetWindow());
-    }
-}
-
-
-void ExpenseTracker::DisplayInterface()
+void ExpenseTracker::Run()
 {
-    std::string text_array[] = { "1. Display expenses", "2. Add entry", "3. Remove entry", "4. Change entry name", "5. Change entry value", "6. Quit" };
-    for (auto str : text_array) {
-        std::cout << str << '\n';
+    ExpenseTrackerRenderer& renderer = ExpenseTrackerRenderer::Get(*this);
+    while (IsRunning())
+    {
+        glfwPollEvents();
+        renderer.RenderStart();
+        renderer.RenderMenuBar();
+        renderer.RenderTable();
+        renderer.RenderEnd();
     }
-}
-
-void ExpenseTracker::HandleCommands(uint16_t command_index) {
-    switch (command_index) {
-        case 1: {
-            std::cout << *this;
-        } break;
-        case 2: {
-            std::string entry_name;
-            float entry_value;
-
-            std::cout << "Enter the entry name:\n";
-            std::cin >> entry_name;
-            std::cout << "Enter the entry value:\n";
-            std::cin >> entry_value;
-
-            AddEntry(entry_name, entry_value);
-        } break;
-        case 3: {
-            std::string entry_name;
-
-            std::cout << "Enter the entry name:\n";
-            std::cin >> entry_name;
-
-            RemoveEntry(entry_name);
-        } break;
-        case 4: {
-            std::string entry_name;
-            std::string new_name;
-
-            std::cout << "Enter the entry name:\n";
-            std::cin >> entry_name;
-            std::cout << "Enter the new entry name:\n";
-            std::cin >> new_name;
-
-            ChangeEntryName(entry_name, new_name);
-        } break;
-        case 5: {
-            std::string entry_name;
-            float new_value;
-
-            std::cout << "Enter the entry name:\n";
-            std::cin >> entry_name;
-            std::cout << "Enter the new value:\n";
-            std::cin >> new_value;
-
-            ChangeEntryValue(entry_name, new_value);
-        } break;
-        case 6: {
-            Stop();
-        } break;
-
-        default: {
-            std::cout << "Not valid operation!\n";
-        } break;
-    }
-}
-
-std::ostream &operator<<(std::ostream &os, const ExpenseTracker &tracker) {
-    std::string selectQuery = "SELECT * FROM Expenses";
-    sqlite3_stmt* statement;
-    int result = sqlite3_prepare_v2(tracker.m_Database, selectQuery.c_str(), -1, &statement, nullptr);
-    if (result != SQLITE_OK) {
-        std::cerr << "Error preparing select statement: " << sqlite3_errmsg(tracker.m_Database) << '\n';
-        return os;
-    }
-    os << "######################################\n";
-    while (sqlite3_step(statement) == SQLITE_ROW) {
-        int id = sqlite3_column_int(statement, 0);
-        const char* name = (const char*)sqlite3_column_text(statement, 1);
-        double value = sqlite3_column_double(statement, 2);
-        os << "ID: " << id << ", Name: " << name << ", Value: " << value << '$' << '\n';
-    }
-    os << "Total: " << tracker.m_Total << "$\n";
-    os << "######################################\n";
-    sqlite3_finalize(statement);
-
-    std::string selectTotalQuery = "SELECT Value FROM Total";
-    sqlite3_stmt *selectStatement;
-    result = sqlite3_prepare_v2(tracker.m_Database, selectTotalQuery.c_str(), -1, &selectStatement, nullptr);
-    if (result != SQLITE_OK) {
-        std::cerr << "Error preparing select total statement: " << sqlite3_errmsg(tracker.m_Database) << '\n';
-        return os;
-    }
-
-    result = sqlite3_step(selectStatement);
-    if (result == SQLITE_ROW) {
-        float totalValue = sqlite3_column_double(selectStatement, 0);
-        os << "Total Value from the Database: " << totalValue << "$\n";
-    } else if (result == SQLITE_DONE) {
-        os << "Total Value not found in the database.\n";
-    } else {
-        std::cerr << "Error loading total value from the database: " << sqlite3_errmsg(tracker.m_Database) << '\n';
-    }
-
-    sqlite3_finalize(selectStatement);
-    return os;
 }

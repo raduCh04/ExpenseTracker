@@ -5,4 +5,6 @@ ExpenceTracker.exe
 Expenses.db
 sqlite3.dll
 my_build.bat
-./glfw3.dll
+imgui.dll
+imgui.ini
+glfw3.dll
