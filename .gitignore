@@ -8,3 +8,5 @@ my_build.bat
 imgui.dll
 imgui.ini
 glfw3.dll
+Bin
+Obj

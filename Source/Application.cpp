@@ -70,7 +70,7 @@ void Application::InitGLFW()
 	}
 	else
 	{
-		m_Width  = mode->width / 1.5;
+		m_Width = mode->width / 1.5;
 		m_Height = mode->height / 16 * 9;
 	}
 

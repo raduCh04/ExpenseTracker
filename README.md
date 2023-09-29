@@ -20,8 +20,8 @@ At the moment only on Windows
 
 ## Building the tracker
 
-Add your file with the main function to the build.bat file and run it
+Run the build.bat in your terminal and run Bin\ExpenseTracker.exe
 
 ## License
 
-Do what you want with it :)
+[MIT](https://choosealicense.com/licenses/mit/)

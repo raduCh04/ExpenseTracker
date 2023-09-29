@@ -8,13 +8,14 @@
 static bool initialized = false;
 
 ExpenseTracker::ExpenseTracker()
-    : m_Total(0.0f), m_Database(nullptr), m_TableStrings({"Id", "Name", "Value"})
+    : m_Total(0.0f), m_Database(nullptr), m_TableStrings({"Id", "Name", "Value"}), m_TempBuffer(), m_TempValue(0.0f)
 {
     InitDatabase();
 }
 
 ExpenseTracker::~ExpenseTracker()
 {
+    m_TableStrings.clear();
     sqlite3_close(m_Database);
 }
 
@@ -284,7 +285,7 @@ void ExpenseTracker::LoadTotalFromDatabase()
 
 void ExpenseTracker::Run()
 {
-    ExpenseTrackerRenderer& renderer = ExpenseTrackerRenderer::Get(*this);
+    ExpenseTrackerRenderer &renderer = ExpenseTrackerRenderer::Get(*this);
     while (IsRunning())
     {
         glfwPollEvents();

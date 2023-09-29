@@ -12,8 +12,8 @@ class Application
 {
 public:
 	Application();
-	Application(const Application&) = delete;
-	Application(Application&&) = delete;
+	Application(const Application &) = delete;
+	Application(Application &&) = delete;
 	virtual ~Application();
 
 	virtual void Run() = 0;

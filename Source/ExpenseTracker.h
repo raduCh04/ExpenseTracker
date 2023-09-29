@@ -24,8 +24,15 @@ public:
     void ChangeEntryName(const std::string &name, const std::string &new_name);
     void ChangeEntryValue(const std::string &name, f32 new_value);
 
-    auto GetDatabase() const { return m_Database; }
-    auto GetTableStrings() const { return m_TableStrings; }
+    inline sqlite3 *GetDatabase() const { return m_Database; }
+    inline std::vector<std::string> GetTableStrings() const { return m_TableStrings; }
+
+    inline f32 GetTempValue() const { return m_TempValue; }
+    inline const char* GetTempBuffer() const { return m_TempBuffer; }
+
+    inline f32& GetTempValue() { return m_TempValue; }
+    inline char* GetTempBuffer() { return m_TempBuffer; }
+
 private:
     void InitDatabase();
 
@@ -36,4 +43,6 @@ private:
     f32 m_Total;
     sqlite3 *m_Database;
     std::vector<std::string> m_TableStrings;
+    f32 m_TempValue;
+    char m_TempBuffer[256];
 };
